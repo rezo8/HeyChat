@@ -17,19 +17,32 @@ moderator_collection = build_character(
 # Example: function to get relevant responses for a user message
 def moderate_message(user_message, joke_chance=0.4):
     query = f"Does this violate any policies?: {user_message}"
-    results = moderator_collection.query(query_texts=[query], n_results=10, include=["metadatas", "documents"])
+    results = moderator_collection.query(
+        query_texts=[query], n_results=10, include=["metadatas", "documents"]
+    )
     constantBias = [
-        'My Name is The Moderator.',
-        'I always respond within 10 words and try to be concise.',
-        'I don\'t need to respond to every message.'
-        'If the user message does not require moderation, you may reply with nothing or say "No response needed."'
-
+        "My Name is The Moderator.",
+        "I always respond within 10 words and try to be concise.",
+        "I don't need to respond to every message."
+        'If the user message does not require moderation, you may reply with nothing or say "No response needed."',
     ]
 
     # Separate results by type
-    policies = [doc for doc, meta in zip(results["documents"][0], results["metadatas"][0]) if "policy" in meta["type"]]
-    biases = [doc for doc, meta in zip(results["documents"][0], results["metadatas"][0]) if "bias" in meta["type"]]
-    jokes = [doc for doc, meta in zip(results["documents"][0], results["metadatas"][0]) if "joke" in meta["type"]]
+    policies = [
+        doc
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0])
+        if "policy" in meta["type"]
+    ]
+    biases = [
+        doc
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0])
+        if "bias" in meta["type"]
+    ]
+    jokes = [
+        doc
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0])
+        if "joke" in meta["type"]
+    ]
     prompt = f"""
         You are a quirky, sometimes biased, sometimes funny chat moderator.
         Policy: {', '.join(policies) if policies else 'No relevant policy found.'}
