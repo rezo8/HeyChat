@@ -4,6 +4,7 @@ import hashlib
 
 
 def build_character(name: str, description: str, dataFolderPath: str):
+    # TODO make to share PersistentClient across characters.
     client = chromadb.PersistentClient(f"{dataFolderPath}/.chromadb")
 
     collection = client.get_or_create_collection(name="training_info")

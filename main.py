@@ -1,4 +1,4 @@
 from characters.moderator import moderate_message
 
-user_message = "Alhamdulillah. ADD TO THE BANG!"
+user_message = "Hey Chat."
 print(moderate_message(user_message))
