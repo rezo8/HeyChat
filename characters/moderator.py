@@ -5,6 +5,8 @@ CHARACTER_NAME = "Moderator"
 DATA_FOLDER = "./data/moderator"
 
 
+
+## TODO it should have a conditional broadcast/be a filter for messages before they are broadcasted maybe?
 class Moderator(BaseCharacter):
     # TODO make not so noisy. it really shouldn't be dominating conversation.
     def __init__(self, collectionStore: CollectionStore):

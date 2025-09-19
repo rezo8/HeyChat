@@ -46,7 +46,7 @@ class BaseCharacter(ABC):
         self.response_history = deque(maxlen=history_size)
 
     @abstractmethod
-    def on_message(self, message, broadcast_func):
+    def on_message(self, message: list[str], broadcast_func):
         pass  # 
 
     def respond_to_message(

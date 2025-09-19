@@ -1,7 +1,15 @@
 import socket
 import threading
 from characters.moderator import Moderator
+from characters.base_character import BaseCharacter
+from characters.bast import Bast
+from characters.weasel import VinnieTheWeasel
+from characters.conspiracy_carl import ConspiracyCarl
 from rag.collection_store import CollectionStore
+from collections import deque
+import traceback
+
+
 
 HOST = '127.0.0.1'
 PORT = 65432
@@ -10,7 +18,9 @@ clients = []
 messages = []
 
 collectionStore = CollectionStore("characters")
-bots = [Moderator(collectionStore)]
+moderator = Moderator(collectionStore)
+bots: list[BaseCharacter]= [Bast(collectionStore)]
+relevantMessages = deque(maxlen=3) # the LLMs get confused with more than 5.
 
 def broadcast(message, sender_conn):
     for client in clients:
@@ -31,9 +41,13 @@ def handle_client(conn, addr):
             messages.append((addr, message))
             broadcast(f"{addr}: {message}", conn)
             # Let bots respond to every message
+            print("sending message to bots")
+            relevantMessages.append(message)
             for bot in bots:
-                bot.on_message(message, broadcast)
-        except:
+                bot.on_message(list(relevantMessages), broadcast)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            traceback.print_exc()
             break
     conn.close()
     clients.remove(conn)
