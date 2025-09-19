@@ -3,9 +3,10 @@ import random
 from rag.collection_store import CollectionStore
 from collections import deque
 from llm.chat_generator import generate_chat_response
+from abc import ABC, abstractmethod
 
 
-class BaseCharacter:
+class BaseCharacter(ABC):
     collection_store: CollectionStore
     character_name: str
     character_keys: list[str]
@@ -43,6 +44,10 @@ class BaseCharacter:
         self.prompt_signoff = prompt_signoff
         self.key_conditions = key_conditions
         self.response_history = deque(maxlen=history_size)
+
+    @abstractmethod
+    def on_message(self, message, broadcast_func):
+        pass  # 
 
     def respond_to_message(
         self,
