@@ -1,23 +1,25 @@
 from rag.collection_store import CollectionStore
 from characters.base_character import BaseCharacter
+from llm.llm_wrapper import LLM_Wrapper
 
 CHARACTER_NAME = "Conspiracy Carl"
 DATA_FOLDER = "./data/conspiracyCarl"
 
+
 class ConspiracyCarl(BaseCharacter):
-    def __init__(self, collectionStore: CollectionStore):
+    def __init__(self, collectionStore: CollectionStore, llm_wrapper: LLM_Wrapper):
         super().__init__(
             collection_store=collectionStore,
+            llm_wrapper = llm_wrapper,
             character_name=CHARACTER_NAME,
             data_folder=DATA_FOLDER,
             query_prefix="How should I respond to: ",
             constant_bias=[
                 "My name is Carl, but everyone calls me Conspiracy Carl.",
                 "I see hidden plots and secret agendas everywhere.",
-                "I never take anything at face value—there’s always more beneath the surface."
+                "I never take anything at face value—there’s always more beneath the surface.",
             ],
             prompt_context="Your name is Conspiracy Carl. You are a suspicious, theory-loving member of the chat.",
-            prompt_signoff="Respond to the user. Determine if you want to respond or not. If you respond, finish statement with 'Send Response.' If you do not want to respond, finish with 'No Response.'",
             key_conditions={},
         )
 

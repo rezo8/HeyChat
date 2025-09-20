@@ -2,12 +2,15 @@ import chromadb
 import random
 from rag.collection_store import CollectionStore
 from collections import deque
-from llm.chat_generator import generate_chat_response
+from llm.llm_wrapper import LLM_Wrapper
+from chat_types.chat_messages import ChatMessage
+from chat_types.llm_response import LLMResponse
 from abc import ABC, abstractmethod
 
 
 class BaseCharacter(ABC):
     collection_store: CollectionStore
+    llm_wrapper: LLM_Wrapper
     character_name: str
     character_keys: list[str]
     query_prefix: (
@@ -22,67 +25,75 @@ class BaseCharacter(ABC):
     def __init__(
         self,
         collection_store: CollectionStore,
+        llm_wrapper: LLM_Wrapper,
         character_name: str,
         data_folder: str,
         query_prefix: str,
         constant_bias: list[str],
         prompt_context: str,
-        prompt_signoff: str,
         key_conditions: dict[str, float] = {},
         history_size: int = 10,  # configurable size
     ):
-        character_keys = collection_store.trainCollection(
-            {"character": character_name}, data_folder
-        )
 
         self.collection_store = collection_store
+        self.llm_wrapper = llm_wrapper
         self.character_name = character_name
-        self.character_keys = character_keys
         self.constant_bias = constant_bias
         self.query_prefix = query_prefix
         self.prompt_context = prompt_context
-        self.prompt_signoff = prompt_signoff
         self.key_conditions = key_conditions
         self.response_history = deque(maxlen=history_size)
+        character_keys = self.collection_store.trainCollection(
+            {"character": self.character_name}, data_folder
+        )
+        self.character_keys = character_keys
 
     @abstractmethod
-    def on_message(self, message: list[str], broadcast_func):
-        pass  # 
+    def on_message(self, messages: list[ChatMessage], broadcast_func):
+        pass  #
 
     def respond_to_message(
         self,
-        relevant_messages: list[(str, str)],  # How will it handle more than 1 message?
-        n_results=10,
-    ):
-        query_string = f"{self.query_prefix}\n".join(
-            [f"{speaker}: {content}" for speaker, content in relevant_messages]
+        relevant_messages: list[ChatMessage],  # How will it handle more than 1 message?
+        n_results=5,
+    ) -> LLMResponse:
+        # TODO remove query_prefix.
+        print(relevant_messages)
+        query_string = f"".join(
+            [msg.format_for_query() for msg in relevant_messages]
         )
-        
+        # I need to improve the customization coming from Chroma.
         chroma_response = self.collection_store.collection.query(
-            query_texts= [query_string],
+            query_texts=[query_string],
             n_results=n_results,
             include=["metadatas", "documents"],
-            where={"name": self.character_name},
+            where={"character": self.character_name},
         )
+        print('chroma response', chroma_response)
 
         prompt = self.__generatePrompt(relevant_messages, chroma_response)
-        response = generate_chat_response(prompt).strip()
-        self.response_history.append(response)
+        self.llm_wrapper.add_message("user", relevant_messages[-1].content)
+        response: LLMResponse = self.llm_wrapper.generate_chat_response(prompt)
+        self.response_history.append(response.content)
+        # TODO handle the response actions.
         return response
 
+    # TODO split this from response information and then messages to respond to in LLM Wrapper
     def __generatePrompt(
-        self, userMessages: list[(str, str)], queryResult: chromadb.QueryResult
-    ):
+        self, userMessages: list[ChatMessage], queryResult: chromadb.QueryResult
+    ): 
+        print('generating prompt')
+        print('userMessages', userMessages)
         responseByType: dict[str, list[str]] = {}
         responseByType["ConstantBias"] = self.constant_bias
-        responseByType["Messages to Respond to"] = [f"{speaker} Says: {content}" for speaker, content in userMessages]
+        responseByType["Messages to Respond to"] = [msg.format_for_query() for msg in userMessages]
         # TODO Don't be limited to first document.
         relevant_docs = zip(queryResult["documents"][0], queryResult["metadatas"][0])
         for doc, meta in relevant_docs:
             for type in meta["type"]:
                 current: list[str] = responseByType.get(type, [])
                 current.append(doc)
-                responseByType.update(type, current)
+                responseByType[type] = current
 
         prompt = self.prompt_context + "\n"
         for x, y in responseByType.items():
@@ -93,6 +104,4 @@ class BaseCharacter(ABC):
             )
             if apply:
                 prompt += f"{x}: {', '.join(y)}\n"
-
-        prompt += self.prompt_signoff
         return prompt

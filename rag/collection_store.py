@@ -34,5 +34,7 @@ class CollectionStore:
         return relevantKeys
 
     def __get_line_hash(self, line: str) -> str:
-        clean = line.strip()[:56]  # Remove leading/trailing whitespace, then take first 56 chars 
+        clean = line.strip()[
+            :56
+        ]  # Remove leading/trailing whitespace, then take first 56 chars
         return hashlib.sha256(clean.encode("utf-8")).hexdigest()

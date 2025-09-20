@@ -2,8 +2,9 @@ import socket
 import threading
 import sys
 
-HOST = '127.0.0.1'
+HOST = "127.0.0.1"
 PORT = 65432
+
 
 def receive(sock):
     while True:
@@ -15,6 +16,7 @@ def receive(sock):
         except:
             break
 
+
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
@@ -25,6 +27,7 @@ def main():
             if not msg:
                 break
             s.sendall(msg.strip().encode())
+
 
 if __name__ == "__main__":
     main()
