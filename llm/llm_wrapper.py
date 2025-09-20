@@ -9,7 +9,27 @@ class LLM_Wrapper:
     def __init__(self, model="llama3"):
         self.model = model
         action_values = "|".join([a.value for a in LLMAction])
-        self.messages = [{
+        # self.messages = [{
+        #     "role": "system",
+        #     "content": (
+        #         "You are a chat participant in a multi-user chatroom. "
+        #         "Always return your responses in the following JSON format. Make sure all values are JSON Valid:\n"
+        #         "{\n"
+        #         '  "sender": \"<your name>\",\n'
+        #         '  "role": \"<role>\",\n'
+        #         '  "content": \"<your message>\",\n'
+        #         '  "type": \"<chat|moderation|system>\",\n'
+        #         f'  "action": \"This must exist and be one of the following values <{action_values}>\",\n'
+        #         '  "timestamp": \"<ISO8601 timestamp>\",\n'
+        #         '  "metadata": { ... }\n'
+        #         "}\n"
+        #         f"For non-moderator bots, always include one of {[a.value for a in ChatBotActions]} in the action field."
+        #         f"For moderators, always include one of {[a.value for a in ModeratorActions]} in the action field."
+        #         "YOU MUST HAVE A VALID ACTION IN YOUR RESPONSE."
+        #         "Respond only in this JSON format—do not include any extra text or explanation."
+        #     )
+        # }]
+        self.instruction = {
             "role": "system",
             "content": (
                 "You are a chat participant in a multi-user chatroom. "
@@ -28,17 +48,26 @@ class LLM_Wrapper:
                 "YOU MUST HAVE A VALID ACTION IN YOUR RESPONSE."
                 "Respond only in this JSON format—do not include any extra text or explanation."
             )
-        }]
+        }
 
+        ollama.chat(model=self.model, messages=[self.instruction])
         return
 
     def add_message(self, role: str, content: str):
         self.messages.append({"role": role, "content": content})
-
-    def generate_chat_response(self, prompt: str, model="llama3") -> LLMResponse:
-        toSend = prompt + self.messages
-        print('toSend', toSend)
-        response = ollama.chat(model=model, messages=toSend)
+    
+    def generate_chat_response(self, personalityInfo: dict[str, list[str]], messagesToRespondTo: list[str]):
+        promptMap = {}
+        content = {}
+        content["llm instructions"] = self.instruction
+        content["personalityInfo"] = personalityInfo
+        content["messagesToRespondTo"] = messagesToRespondTo
+        promptMap["content"] = json.dumps(content)
+        prompt = json.dumps(promptMap)
+        messages = [{"role": "user", "content": prompt}]
+        print(messages)
+        response = ollama.chat(model=self.model, messages=messages)
+        print(response)
         message = parse_llm_content(response.message.content)
         print('message', message)
         llm_response = LLMResponse(
@@ -52,7 +81,9 @@ class LLM_Wrapper:
         )
         print('llm response', llm_response)
         return llm_response
-
+    
+        
+        
 def parse_llm_content(content: str) -> dict:
     try:
         return json.loads(content)

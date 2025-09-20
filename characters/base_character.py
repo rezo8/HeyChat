@@ -69,39 +69,52 @@ class BaseCharacter(ABC):
             include=["metadatas", "documents"],
             where={"character": self.character_name},
         )
-        print('chroma response', chroma_response)
-
-        prompt = self.__generatePrompt(relevant_messages, chroma_response)
-        self.llm_wrapper.add_message("user", relevant_messages[-1].content)
-        response: LLMResponse = self.llm_wrapper.generate_chat_response(prompt)
+        personalityInfo = self.__generatePersonalityInfo(chroma_response)
+        print(personalityInfo)
+        messagesToRespondTo = self.__generateMessagesToRespondTo(relevant_messages)
+        response: LLMResponse = self.llm_wrapper.generate_chat_response(personalityInfo, messagesToRespondTo)
         self.response_history.append(response.content)
         # TODO handle the response actions.
         return response
 
-    # TODO split this from response information and then messages to respond to in LLM Wrapper
-    def __generatePrompt(
-        self, userMessages: list[ChatMessage], queryResult: chromadb.QueryResult
-    ): 
-        print('generating prompt')
-        print('userMessages', userMessages)
+    def __generatePersonalityInfo(self, queryResult: chromadb.QueryResult):
         responseByType: dict[str, list[str]] = {}
-        responseByType["ConstantBias"] = self.constant_bias
-        responseByType["Messages to Respond to"] = [msg.format_for_query() for msg in userMessages]
-        # TODO Don't be limited to first document.
-        relevant_docs = zip(queryResult["documents"][0], queryResult["metadatas"][0])
-        for doc, meta in relevant_docs:
-            for type in meta["type"]:
-                current: list[str] = responseByType.get(type, [])
-                current.append(doc)
-                responseByType[type] = current
 
-        prompt = self.prompt_context + "\n"
-        for x, y in responseByType.items():
-            apply = (
-                random.random() < self.key_conditions[x]
-                if x in self.key_conditions
-                else True
-            )
-            if apply:
-                prompt += f"{x}: {', '.join(y)}\n"
-        return prompt
+
+        for doc, meta in zip(queryResult["documents"][0], queryResult["metadatas"][0]):
+            current: list[str] = responseByType.get(meta["type"], [])
+            current.append(doc)
+            responseByType[meta["type"]] = current
+        print('resoonseByType before adding constant bias', responseByType)
+        return responseByType
+    
+    def __generateMessagesToRespondTo(self, userMessages: list[ChatMessage]):
+        return [msg.format_for_query() for msg in userMessages]
+
+    # TODO split this from response information and then messages to respond to in LLM Wrapper
+    # def __generatePrompt(
+    #     self, userMessages: list[ChatMessage], queryResult: chromadb.QueryResult
+    # ): 
+    #     print('generating prompt')
+    #     print('userMessages', userMessages)
+    #     responseByType: dict[str, list[str]] = {}
+    #     responseByType["ConstantBias"] = self.constant_bias
+    #     responseByType["Messages to Respond to"] = [msg.format_for_query() for msg in userMessages]
+    #     # TODO Don't be limited to first document.
+    #     relevant_docs = zip(queryResult["documents"][0], queryResult["metadatas"][0])
+    #     for doc, meta in relevant_docs:
+    #         for type in meta["type"]:
+    #             current: list[str] = responseByType.get(type, [])
+    #             current.append(doc)
+    #             responseByType[type] = current
+
+    #     prompt = self.prompt_context + "\n"
+    #     for x, y in responseByType.items():
+    #         apply = (
+    #             random.random() < self.key_conditions[x]
+    #             if x in self.key_conditions
+    #             else True
+    #         )
+    #         if apply:
+    #             prompt += f"{x}: {', '.join(y)}\n"
+    #     return prompt
